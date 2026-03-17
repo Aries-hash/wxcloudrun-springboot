@@ -2,8 +2,9 @@ package com.tencent.wxcloudrun.config;
 
 import lombok.Data;
 
-import java.util.HashMap;
-
+/**
+ * 统一API响应封装
+ */
 @Data
 public final class ApiResponse {
 
@@ -16,9 +17,9 @@ public final class ApiResponse {
     this.errorMsg = errorMsg;
     this.data = data;
   }
-  
+
   public static ApiResponse ok() {
-    return new ApiResponse(0, "", new HashMap<>());
+    return new ApiResponse(0, "", null);
   }
 
   public static ApiResponse ok(Object data) {
@@ -26,6 +27,6 @@ public final class ApiResponse {
   }
 
   public static ApiResponse error(String errorMsg) {
-    return new ApiResponse(0, errorMsg, new HashMap<>());
+    return new ApiResponse(-1, errorMsg, null);
   }
 }

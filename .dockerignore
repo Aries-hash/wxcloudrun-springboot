@@ -1,0 +1,23 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.codebuddy/
+
+# Build output
+target/
+
+# Documentation
+README.md
+LICENSE
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log

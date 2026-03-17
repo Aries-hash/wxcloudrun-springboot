@@ -1,42 +1,41 @@
-# 二开推荐阅读[如何提高项目构建效率](https://developers.weixin.qq.com/miniprogram/dev/wxcloudrun/src/scene/build/speed.html)
-# 选择构建用基础镜像 (JDK 25 + Maven)
+# ===== 构建阶段 =====
 FROM maven:3.9-eclipse-temurin-25 AS build
 
-# 指定构建过程中的工作目录
 WORKDIR /app
 
-# 将src目录下所有文件，拷贝到工作目录中src目录下（.gitignore/.dockerignore中文件除外）
+# 【优化关键】先只拷贝 pom.xml 和 settings.xml，单独下载依赖
+# 这样只要依赖不变，Docker 会缓存这一层，后续构建直接跳过依赖下载
+COPY settings.xml pom.xml /app/
+RUN mvn -s /app/settings.xml -f /app/pom.xml dependency:go-offline -B
+
+# 再拷贝源代码（这一层经常变化，但依赖层已缓存）
 COPY src /app/src
 
-# 将pom.xml文件，拷贝到工作目录下
-COPY settings.xml pom.xml /app/
+# 编译打包（跳过测试 + 离线模式，因为依赖已下载完毕）
+RUN mvn -s /app/settings.xml -f /app/pom.xml clean package -DskipTests -o
 
-# 执行代码编译命令
-# 自定义settings.xml, 选用国内镜像源以提高下载速度
-RUN mvn -s /app/settings.xml -f /app/pom.xml clean package -DskipTests
+# ===== 运行阶段 =====
+FROM eclipse-temurin:25-jre-alpine
 
-# 选择运行时基础镜像 (JDK 25 运行时)
-FROM eclipse-temurin:25-jre
+# 设置上海时区
+ENV TZ=Asia/Shanghai
 
-# 容器默认时区为UTC，如需使用上海时间请启用以下时区设置命令
-# ENV TZ=Asia/Shanghai
-# RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo Asia/Shanghai > /etc/timezone
+# 安装证书 + 时区数据（合并为一条 RUN 减少层数）
+RUN apk add --no-cache ca-certificates tzdata \
+    && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo "Asia/Shanghai" > /etc/timezone \
+    && apk del tzdata
 
-# 使用 HTTPS 协议访问容器云调用证书安装
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
-
-# 指定运行时的工作目录
 WORKDIR /app
 
-# 将构建产物jar包拷贝到运行时目录中
-COPY --from=build /app/target/*.jar .
+# 只拷贝最终 jar 包
+COPY --from=build /app/target/*.jar app.jar
 
-# 暴露端口
-# 此处端口必须与「服务设置」-「流水线」以及「手动上传代码包」部署时填写的端口一致，否则会部署失败。
-# EXPOSE 801 模拟测试鉴权问题
 EXPOSE 80
 
-# 执行启动命令.
-# 写多行独立的CMD命令是错误写法！只有最后一行CMD命令会被执行，之前的都会被忽略，导致业务报错。
-# 请参考[Docker官方文档之CMD命令](https://docs.docker.com/engine/reference/builder/#cmd)
-CMD ["java", "-jar", "/app/springboot-wxcloudrun-1.0.jar"]
+# 优化 JVM 启动参数
+CMD ["java", \
+     "-XX:+UseContainerSupport", \
+     "-XX:MaxRAMPercentage=75.0", \
+     "-Djava.security.egd=file:/dev/./urandom", \
+     "-jar", "/app/app.jar"]

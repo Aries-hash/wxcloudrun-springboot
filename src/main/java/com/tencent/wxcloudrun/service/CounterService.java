@@ -3,8 +3,10 @@ package com.tencent.wxcloudrun.service;
 import com.tencent.wxcloudrun.model.Counter;
 
 import java.util.Optional;
-import java.util.List;
 
+/**
+ * 计数器服务接口
+ */
 public interface CounterService {
 
   Optional<Counter> getCounter(Integer id);

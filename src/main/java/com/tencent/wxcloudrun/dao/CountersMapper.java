@@ -3,8 +3,10 @@ package com.tencent.wxcloudrun.dao;
 import com.tencent.wxcloudrun.model.Counter;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import java.util.List;
 
+/**
+ * 计数器数据访问层
+ */
 @Mapper
 public interface CountersMapper {
 
